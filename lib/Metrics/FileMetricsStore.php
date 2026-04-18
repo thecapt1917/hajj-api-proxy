@@ -48,17 +48,47 @@ final class FileMetricsStore
                 return [];
             }
 
-            $raw = file_get_contents($this->filePath);
-            if (!is_string($raw) || $raw === "") {
+            $handle = fopen($this->filePath, "rb");
+            if ($handle === false) {
                 return [];
             }
 
-            $decoded = json_decode($raw, true);
-            return is_array($decoded) ? $decoded : [];
+            try {
+                if (!flock($handle, LOCK_SH)) {
+                    return [];
+                }
+
+                $raw = stream_get_contents($handle);
+                if (!is_string($raw) || $raw === "") {
+                    return [];
+                }
+
+                $decoded = json_decode($raw, true);
+                return is_array($decoded) ? $decoded : [];
+            } finally {
+                flock($handle, LOCK_UN);
+                fclose($handle);
+            }
         } catch (Throwable $throwable) {
             error_log("hajj_metrics_issue action=snapshot reason=" . $throwable->getMessage());
             return [];
         }
+    }
+
+    public function recordUpstreamLatency(int $durationMs): void
+    {
+        if ($durationMs < 0) {
+            $durationMs = 0;
+        }
+
+        $this->mutate(function (array $current) use ($durationMs): array {
+            $current["upstream_latency_sum_ms"] = (int) ($current["upstream_latency_sum_ms"] ?? 0) + $durationMs;
+            $current["upstream_latency_count"] = (int) ($current["upstream_latency_count"] ?? 0) + 1;
+            $current["upstream_last_latency_ms"] = $durationMs;
+            $current["upstream_max_latency_ms"] = max((int) ($current["upstream_max_latency_ms"] ?? 0), $durationMs);
+            $current["upstream_last_recorded_at_utc"] = gmdate("c");
+            return $current;
+        });
     }
 
     public function reset(): void

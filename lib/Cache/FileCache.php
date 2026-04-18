@@ -102,14 +102,7 @@ final class FileCache
             return $result;
         }
 
-        $pattern = rtrim($this->cacheDirectory, "\\/") . DIRECTORY_SEPARATOR . "*.json";
-        $files = glob($pattern);
-        if ($files === false) {
-            $result["errors"]++;
-            return $result;
-        }
-
-        foreach ($files as $file) {
+        foreach ($this->iterateCacheFiles() as $file) {
             $result["scanned"]++;
             try {
                 $raw = file_get_contents($file);
@@ -140,6 +133,40 @@ final class FileCache
         }
 
         return $result;
+    }
+
+    private function iterateCacheFiles(): Generator
+    {
+        try {
+            $iterator = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator(
+                    $this->cacheDirectory,
+                    FilesystemIterator::SKIP_DOTS
+                )
+            );
+        } catch (Throwable $throwable) {
+            $this->logCacheIssue("prune_iterate", $this->cacheDirectory, $throwable->getMessage());
+            return;
+        }
+
+        foreach ($iterator as $fileInfo) {
+            if (!$fileInfo instanceof SplFileInfo) {
+                continue;
+            }
+
+            if (!$fileInfo->isFile()) {
+                continue;
+            }
+
+            if (strtolower($fileInfo->getExtension()) !== "json") {
+                continue;
+            }
+
+            $path = $fileInfo->getPathname();
+            if ($path !== "") {
+                yield $path;
+            }
+        }
     }
 
     private function ensureCacheDirectory(): bool

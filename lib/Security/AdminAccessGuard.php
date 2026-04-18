@@ -47,8 +47,9 @@ final class AdminAccessGuard
         }
 
         $authorization = trim((string) ($_SERVER["HTTP_AUTHORIZATION"] ?? ""));
-        if (preg_match("/^Bearer\s+(.+)$/i", $authorization, $matches) === 1) {
-            return trim((string) ($matches[1] ?? ""));
+        // Accept raw token in Authorization header (without Bearer prefix).
+        if ($authorization !== "") {
+            return $authorization;
         }
 
         return "";

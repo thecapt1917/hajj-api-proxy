@@ -11,24 +11,8 @@ final class CacheMaintenanceController
 
     public function handlePrune(): void
     {
-        $method = $this->requestMethod();
-        if ($method !== "POST" && $method !== "DELETE") {
-            $this->jsonResponder->send(
-                405,
-                $this->jsonResponder->errorPayload("405", "Method tidak diizinkan"),
-                ["Allow" => "POST, DELETE"]
-            );
-        }
-
-        $auth = $this->adminAccessGuard->authorize();
-        if (($auth["ok"] ?? false) !== true) {
-            $statusCode = (int) ($auth["status_code"] ?? 403);
-            $payload = $auth["payload"] ?? $this->jsonResponder->errorPayload("403", "Akses ditolak");
-            if (!is_array($payload)) {
-                $payload = $this->jsonResponder->errorPayload("403", "Akses ditolak");
-            }
-            $this->jsonResponder->send($statusCode, $payload);
-        }
+        AdminRequestGuard::ensureAllowedMethod($this->jsonResponder, $this->requestMethod(), ["POST", "DELETE"]);
+        AdminRequestGuard::ensureAuthorized($this->jsonResponder, $this->adminAccessGuard);
 
         $result = $this->fileCache->pruneExpired();
         $payload = [

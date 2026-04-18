@@ -1,25 +1,24 @@
 <?php
 
-final class UpstreamClient
+class ScheduleUpstreamClient
 {
     public function __construct(private readonly CheckApiConfig $config)
     {
     }
 
-    public function requestCheck(string $noPorsi): ?string
+    public function requestSchedule(string $embarkasi, string $kloter): ?string
     {
-        $upstreamUrl = $this->config->getUpstreamUrl();
+        $upstreamUrl = $this->config->getScheduleUpstreamUrl();
         $upstreamKey = $this->config->getUpstreamKey();
-
-        if ($upstreamUrl === "" || $upstreamKey === "") {
-            throw new RuntimeException("Konfigurasi upstream belum lengkap");
-        }
 
         if (!function_exists("curl_init")) {
             throw new RuntimeException("Ekstensi cURL tidak tersedia");
         }
 
-        $requestBody = json_encode(["no_porsi" => $noPorsi], JSON_UNESCAPED_UNICODE);
+        $requestBody = json_encode(
+            ["a" => $embarkasi, "b" => $kloter],
+            JSON_UNESCAPED_UNICODE
+        );
         if (!is_string($requestBody)) {
             return null;
         }
@@ -37,7 +36,9 @@ final class UpstreamClient
             CURLOPT_TIMEOUT => 20,
             CURLOPT_ENCODING => "",
             CURLOPT_HTTPHEADER => [
-                "accept: application/json",
+                "User-Agent: Dart/2.17 (dart:io)",
+                "Accept: application/json",
+                "Accept-Encoding: gzip",
                 "content-type: application/json; charset=utf-8",
                 "x-key: " . $upstreamKey,
             ],
@@ -72,7 +73,7 @@ final class UpstreamClient
     private function logUpstreamIssue(int $httpCode, int $curlErrno, string $curlError, int $durationMs): void
     {
         $message = sprintf(
-            "hajj_upstream_issue http_code=%d curl_errno=%d duration_ms=%d curl_error=%s",
+            "hajj_schedule_upstream_issue http_code=%d curl_errno=%d duration_ms=%d curl_error=%s",
             $httpCode,
             $curlErrno,
             $durationMs,

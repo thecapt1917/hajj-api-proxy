@@ -1,27 +1,18 @@
 <?php
 
-final class UpstreamClient
+class EmbarkationUpstreamClient
 {
     public function __construct(private readonly CheckApiConfig $config)
     {
     }
 
-    public function requestCheck(string $noPorsi): ?string
+    public function requestList(): ?string
     {
-        $upstreamUrl = $this->config->getUpstreamUrl();
-        $upstreamKey = $this->config->getUpstreamKey();
-
-        if ($upstreamUrl === "" || $upstreamKey === "") {
-            throw new RuntimeException("Konfigurasi upstream belum lengkap");
-        }
+        $upstreamUrl = $this->config->getEmbarkationUpstreamUrl();
+        $upstreamKey = $this->config->getEmbarkationUpstreamKey();
 
         if (!function_exists("curl_init")) {
             throw new RuntimeException("Ekstensi cURL tidak tersedia");
-        }
-
-        $requestBody = json_encode(["no_porsi" => $noPorsi], JSON_UNESCAPED_UNICODE);
-        if (!is_string($requestBody)) {
-            return null;
         }
 
         $curl = curl_init($upstreamUrl);
@@ -31,17 +22,18 @@ final class UpstreamClient
 
         $startTime = microtime(true);
         curl_setopt_array($curl, [
-            CURLOPT_POST => true,
+            CURLOPT_HTTPGET => true,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_TIMEOUT => 20,
             CURLOPT_ENCODING => "",
             CURLOPT_HTTPHEADER => [
-                "accept: application/json",
-                "content-type: application/json; charset=utf-8",
+                "User-Agent: Dart/2.17 (dart:io)",
+                "Accept: application/json",
+                "Accept-Encoding: gzip",
+                "content-type: application/json",
                 "x-key: " . $upstreamKey,
             ],
-            CURLOPT_POSTFIELDS => $requestBody,
         ]);
         $this->applyTlsOptions($curl);
 
@@ -72,7 +64,7 @@ final class UpstreamClient
     private function logUpstreamIssue(int $httpCode, int $curlErrno, string $curlError, int $durationMs): void
     {
         $message = sprintf(
-            "hajj_upstream_issue http_code=%d curl_errno=%d duration_ms=%d curl_error=%s",
+            "hajj_embarkation_upstream_issue http_code=%d curl_errno=%d duration_ms=%d curl_error=%s",
             $httpCode,
             $curlErrno,
             $durationMs,

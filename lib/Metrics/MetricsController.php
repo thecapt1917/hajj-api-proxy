@@ -11,23 +11,8 @@ final class MetricsController
 
     public function handle(): void
     {
-        if (($this->requestMethod()) !== "GET") {
-            $this->jsonResponder->send(
-                405,
-                $this->jsonResponder->errorPayload("405", "Method tidak diizinkan"),
-                ["Allow" => "GET"]
-            );
-        }
-
-        $auth = $this->adminAccessGuard->authorize();
-        if (($auth["ok"] ?? false) !== true) {
-            $statusCode = (int) ($auth["status_code"] ?? 403);
-            $payload = $auth["payload"] ?? $this->jsonResponder->errorPayload("403", "Akses ditolak");
-            if (!is_array($payload)) {
-                $payload = $this->jsonResponder->errorPayload("403", "Akses ditolak");
-            }
-            $this->jsonResponder->send($statusCode, $payload);
-        }
+        AdminRequestGuard::ensureAllowedMethod($this->jsonResponder, $this->requestMethod(), ["GET"]);
+        AdminRequestGuard::ensureAuthorized($this->jsonResponder, $this->adminAccessGuard);
 
         $snapshot = $this->metricsStore->snapshot();
         $latencyCount = (int) ($snapshot["upstream_latency_count"] ?? 0);
@@ -49,6 +34,9 @@ final class MetricsController
                 "responses_4xx" => (int) ($snapshot["responses_4xx"] ?? 0),
                 "responses_5xx" => (int) ($snapshot["responses_5xx"] ?? 0),
                 "upstream_avg_latency_ms" => $avgLatencyMs,
+                "upstream_last_latency_ms" => (int) ($snapshot["upstream_last_latency_ms"] ?? 0),
+                "upstream_max_latency_ms" => (int) ($snapshot["upstream_max_latency_ms"] ?? 0),
+                "upstream_last_recorded_at_utc" => $snapshot["upstream_last_recorded_at_utc"] ?? null,
                 "generated_at_utc" => gmdate("c"),
             ],
         ];
@@ -58,24 +46,8 @@ final class MetricsController
 
     public function handleReset(): void
     {
-        $method = $this->requestMethod();
-        if ($method !== "POST" && $method !== "DELETE") {
-            $this->jsonResponder->send(
-                405,
-                $this->jsonResponder->errorPayload("405", "Method tidak diizinkan"),
-                ["Allow" => "POST, DELETE"]
-            );
-        }
-
-        $auth = $this->adminAccessGuard->authorize();
-        if (($auth["ok"] ?? false) !== true) {
-            $statusCode = (int) ($auth["status_code"] ?? 403);
-            $payload = $auth["payload"] ?? $this->jsonResponder->errorPayload("403", "Akses ditolak");
-            if (!is_array($payload)) {
-                $payload = $this->jsonResponder->errorPayload("403", "Akses ditolak");
-            }
-            $this->jsonResponder->send($statusCode, $payload);
-        }
+        AdminRequestGuard::ensureAllowedMethod($this->jsonResponder, $this->requestMethod(), ["POST", "DELETE"]);
+        AdminRequestGuard::ensureAuthorized($this->jsonResponder, $this->adminAccessGuard);
 
         $this->metricsStore->reset();
         $payload = [

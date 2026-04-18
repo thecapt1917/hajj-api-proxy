@@ -2,7 +2,10 @@
 
 final class HealthController
 {
-    public function __construct(private readonly JsonResponder $jsonResponder)
+    public function __construct(
+        private readonly JsonResponder $jsonResponder,
+        private readonly CheckApiConfig $config
+    )
     {
     }
 
@@ -64,6 +67,7 @@ final class HealthController
                 "x-key: " . $upstreamKey,
             ],
         ]);
+        $this->applyTlsOptions($curl);
 
         $response = curl_exec($curl);
         $httpCode = (int) curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
@@ -75,6 +79,20 @@ final class HealthController
         }
 
         return [$httpCode > 0, $httpCode];
+    }
+
+    private function applyTlsOptions(CurlHandle $curl): void
+    {
+        if (!$this->config->shouldVerifyTls()) {
+            curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, 0);
+            return;
+        }
+
+        $caInfo = $this->config->getCurlCaInfoPath();
+        if ($caInfo !== "") {
+            curl_setopt($curl, CURLOPT_CAINFO, $caInfo);
+        }
     }
 
     private function requestMethod(): string
