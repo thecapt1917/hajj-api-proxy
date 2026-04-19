@@ -1,5 +1,5 @@
 <?php
-
+# comment
 require_once __DIR__ . "/router.php";
 require_once __DIR__ . "/lib/check_api_bootstrap.php";
 require_once __DIR__ . "/lib/Support/RequestContext.php";
@@ -26,7 +26,10 @@ function health_controller(): HealthController
 
 function embarkation_controller(): EmbarkationController
 {
-    return controller_instance("embarkation", fn() => build_embarkation_controller());
+    return controller_instance(
+        "embarkation",
+        fn() => build_embarkation_controller(),
+    );
 }
 
 function schedule_controller(): ScheduleController
@@ -41,7 +44,10 @@ function metrics_controller(): MetricsController
 
 function cache_maintenance_controller(): CacheMaintenanceController
 {
-    return controller_instance("cache_maintenance", fn() => build_cache_maintenance_controller());
+    return controller_instance(
+        "cache_maintenance",
+        fn() => build_cache_maintenance_controller(),
+    );
 }
 
 function is_check_namespace_request_path(): bool
@@ -70,19 +76,31 @@ function send_json_not_found(): void
     header("Content-Type: application/json; charset=utf-8");
     header("Cache-Control: no-store");
     header("X-Content-Type-Options: nosniff");
-    echo json_encode([
-        "success" => false,
-        "code" => "404",
-        "message" => "Route tidak ditemukan",
-        "data" => null,
-    ], JSON_UNESCAPED_UNICODE);
+    echo json_encode(
+        [
+            "success" => false,
+            "code" => "404",
+            "message" => "Route tidak ditemukan",
+            "data" => null,
+        ],
+        JSON_UNESCAPED_UNICODE,
+    );
     exit();
 }
 
 any("/check", fn() => check_controller()->handleBadPath());
-any('/check/$no_porsi', fn($no_porsi) => check_controller()->handleCheck($no_porsi));
+any(
+    '/check/$no_porsi',
+    fn($no_porsi) => check_controller()->handleCheck($no_porsi),
+);
 any("/embarkasi", fn() => embarkation_controller()->handleList());
-any('/jadwal/$embarkasi/$kloter', fn($embarkasi, $kloter) => schedule_controller()->handleSchedule($embarkasi, $kloter));
+any(
+    '/jadwal/$embarkasi/$kloter',
+    fn($embarkasi, $kloter) => schedule_controller()->handleSchedule(
+        $embarkasi,
+        $kloter,
+    ),
+);
 any("/health", fn() => health_controller()->handle());
 any("/metrics", fn() => metrics_controller()->handle());
 any("/metrics/reset", fn() => metrics_controller()->handleReset());
